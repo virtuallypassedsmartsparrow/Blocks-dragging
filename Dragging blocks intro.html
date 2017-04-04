@@ -1,0 +1,416 @@
+<!doctype= html>
+
+<html>
+<head>
+
+
+  <title>Dragging Block</title>
+
+<body onload="start_sim()">
+
+<div style="float: left; padding-right: 20px;">
+	<p> m = <span id="mass1">200</span> kg </p><input id="m" type="range" step="50" value="200" min="0" max="400" onInput="mChange(this.value)" onmouseup="start_sim()">
+<!-- 	<p> M = <span id="mass2">300</span> kg </p><input id="M" type="range" step="50" value="300" min="200" max="500" onInput="MChange(this.value)" onmouseup="start_sim()">
+	<p> P = <span id="force">2000</span> N </p><input id="P" type="range" value="2000" step="500" min="0" max="3000" onInput="PChange(this.value)" onmouseup="start_sim()"> -->
+	<br><br>
+
+</div>
+		<canvas id="myCanvas" width="502" height="300" style="border:1px solid #d3d3d3; float: left;"></canvas>
+  <script>
+function mChange(val) {
+	document.getElementById('mass1').innerHTML = val;
+}
+function MChange(val) {
+	document.getElementById('mass2').innerHTML = val;
+}
+function PChange(val) {
+	document.getElementById('force').innerHTML = val;
+}
+	var ctx = getCanvas();
+var myinterval;
+var ctx = getCanvas();
+var dt = 0.01; // in seconds
+
+var forcescale = 0.0005 //pixles/N
+var scale = 40 //pixes/m
+var canvasheight = document.getElementById('myCanvas').height / scale //canvasheight in meters
+var canvaswidth = document.getElementById('myCanvas').width / scale // canvaswidth in meters
+//inputs and geometry
+var x0;
+var y0;
+var x1;
+var y1;
+var x2;
+var y2;
+var alpha;
+var beta;
+var theta;
+var u_s;
+var u_k;
+
+var base;
+var X;
+var H;
+var t1;
+var t2;
+var r;
+var L;
+var R;
+var length2;
+//movements
+var a1;
+var v1;
+var a2;
+var v2;
+var s1;
+var s2;
+var m;
+var M;
+var P;
+
+var F_static_no_friction;
+var N;
+
+var timer;
+var angle1;
+var angle2;
+var angle3;
+
+function start_sim(){
+	clearInterval(myinterval);
+//inputs and geometry
+m = Number(document.getElementById("m").value);
+M = 300
+P = 0;
+u_s = 0.3
+u_k = 0.2
+alpha = 30 * Math.PI/180;
+beta = 45 * Math.PI/180;
+theta = 10 *Math.PI/180;
+base = 0.9*canvaswidth;
+x0 = 0.05*canvaswidth;
+y0 = 0.95*canvasheight;
+X = base*Math.tan(beta)/(Math.tan(alpha)+Math.tan(beta)); //horizontal distance of hill until peak
+H = base*Math.tan(alpha)*Math.tan(beta)/(Math.tan(alpha)+Math.tan(beta)) //height of peak
+t1 = 0.001*m;  
+t2 = 0.4;
+R = 2*t2/3;
+L1 = 0.4;
+L2 = 0.3 + 0.001*(M-200);
+r = L1/6; //3 wheels at bottom of block 1
+r2 = t2/2;
+x1 = x0+0.5*X;
+y1 = y0 - (t1+2*r)*Math.cos(alpha)-(t1+2*r)*Math.tan(alpha)*Math.sin(alpha) - (H/X)*(x1-x0);
+x2 = x0+0.5*base+0.5*X;
+y2 = y0 - t2*Math.cos(beta)-t2*Math.tan(beta)*Math.sin(beta) + (H/(base-X))*(x2-(x0+base));
+length1 = Math.sqrt(Math.pow(x1+L1*Math.cos(alpha)+0.5*t1*Math.sin(alpha) - (x0+X),2)+Math.pow( y1-L1*Math.sin(alpha)+0.5*t1*Math.cos(alpha)  - (y0-H - t2/(6*Math.cos(beta))),2));
+length1angle = Math.atan((y1-L1*Math.sin(alpha)+0.5*t1*Math.cos(alpha)  - (y0-H - t2/(6*Math.cos(beta))))/(-(x1+L1*Math.cos(alpha)+0.5*t1*Math.sin(alpha)) + (x0+X)))
+
+v2 = 0;
+v1 = 0;
+s2 = 0;
+s1 = 0;
+
+angle1 = 0;
+angle2 = 0;
+angle3 = 0;
+
+timer = 0;
+	myinterval = setInterval(function(){simulate_calcs()}, dt * 1000)
+}
+function simulate_calcs() {
+var ctx=getCanvas();
+ctx.clearRect(0,0,canvaswidth*scale,canvasheight*scale);
+
+	//text
+	timer = timer + dt;
+	ctx.font = '20px Calibri';
+	ctx.fillStyle = 'black';
+	ctx.fillText("Timer: " + Math.round(timer*10)/10 + " s", 10, 30);
+
+	//drawing hill
+	ctx.beginPath();
+	ctx.moveTo(x0*scale,y0*scale);
+	ctx.lineTo(x0*scale+base*scale,y0*scale);
+	ctx.lineTo(x0*scale+X*scale,y0*scale-H*scale);
+	ctx.lineTo(x0*scale,y0*scale);
+	ctx.stroke();
+	ctx.fillStyle="rgba(245,201,63,0.6)"
+	ctx.fill();
+	ctx.closePath();
+
+
+	//drawing block 1
+	drawRectangleSlant(x1,y1,L1,t1,-alpha, 'rgb(51, 204, 51)');
+	drawBall(x1+(t1+r)*Math.sin(alpha)+1*r*Math.cos(alpha),y1+(t1+r)*Math.cos(alpha)-1*r*Math.sin(alpha),r, angle3);
+	drawBall(x1+(t1+r)*Math.sin(alpha)+3*r*Math.cos(alpha),y1+(t1+r)*Math.cos(alpha)-3*r*Math.sin(alpha),r, angle3);
+	drawBall(x1+(t1+r)*Math.sin(alpha)+5*r*Math.cos(alpha),y1+(t1+r)*Math.cos(alpha)-5*r*Math.sin(alpha),r, angle3);
+
+	//drawing block 2
+	drawRectangleSlant(x2,y2,L2,t2,beta, 'rgb(102, 153, 255)');
+	drawIsoTriangle(x2-0.5*t2*Math.sin(beta), y2+0.5*t2*Math.cos(beta), t2, t2/2, Math.PI - beta);
+	drawBall(x2-0.5*t2*Math.sin(beta)-0.5*t2*Math.cos(beta), y2 + 0.5*t2*Math.cos(beta) - 0.5*t2*Math.sin(beta), t2/3, angle2)
+
+	//big pulley
+	drawBall(x0+X, y0-H - t2/(6*Math.cos(beta)), R, angle1);
+
+	//Rope bottom block 2
+	drawLine(x0+X, y0-H - t2/(6*Math.cos(beta)), x2-0.5*t2*Math.sin(beta)-0.5*t2*Math.cos(beta)-(t2/3)*Math.sin(beta), y2 + 0.5*t2*Math.cos(beta) - 0.5*t2*Math.sin(beta) +(t2/3)*Math.cos(beta))
+
+	//Rope top block 2
+	drawLine(x0+X + R*Math.sin(beta), y0-H - t2/(6*Math.cos(beta)) - R*Math.cos(beta), x2-0.5*t2*Math.sin(beta)-0.5*t2*Math.cos(beta)+(t2/3)*Math.sin(beta), y2 + 0.5*t2*Math.cos(beta) - 0.5*t2*Math.sin(beta) -(t2/3)*Math.cos(beta))
+
+	//Rope block 1
+	drawLine(x1+L1*Math.cos(alpha)+0.5*t1*Math.sin(alpha), y1-L1*Math.sin(alpha)+0.5*t1*Math.cos(alpha), x1+L1*Math.cos(alpha)+0.5*t1*Math.sin(alpha) + length1*Math.cos(length1angle + Math.atan(R/length1)), y1-L1*Math.sin(alpha)+0.5*t1*Math.cos(alpha) - length1*Math.sin(length1angle + Math.atan(R/length1)));
+
+	//Force P
+	drawArrowSmall(x2+L2*Math.cos(beta)-0.5*t2*Math.sin(beta) + P * forcescale * Math.cos(theta),  y2+L2*Math.sin(beta)+0.5*t2*Math.cos(beta) - P * forcescale * Math.sin(theta),x2+L2*Math.cos(beta)-0.5*t2*Math.sin(beta), y2+L2*Math.sin(beta)+0.5*t2*Math.cos(beta));
+
+
+
+	//calculations
+	F_static_no_friction = 2 * (m*9.81*Math.sin(alpha)) + P*Math.cos(theta+beta) - M*9.81*Math.sin(beta);
+	N = P*Math.sin(theta+beta) + M*9.81*Math.cos(beta);
+
+	if (F_static_no_friction > u_s*N) {
+		a2 = (2*m*9.81*Math.sin(alpha) + P*Math.cos(theta+beta) - M*9.81*Math.sin(beta) - u_k*P*Math.sin(theta+beta)-u_k*M*9.81*Math.cos(beta))/(M+4*m);
+	}	
+	else if (F_static_no_friction < - u_s*N)	{
+		a2 = (2*m*9.81*Math.sin(alpha) + P*Math.cos(theta+beta) - M*9.81*Math.sin(beta) + u_k*P*Math.sin(theta+beta)+u_k*M*9.81*Math.cos(beta))/(M+4*m);
+	}
+	else	{
+		a2 = 0;
+	}
+
+	//a2 = (2*m*9.81*Math.sin(alpha) + P*Math.cos(theta+beta) - M*9.81*Math.sin(beta) - u_k*P*Math.sin(theta+beta)-u_k*M*9.81*Math.cos(beta))/(M+4*m);
+	v2 = a2 * dt + v2;
+	s2 = v2 * dt + s2;
+	x2 = - Math.cos(beta)*s2 + x0+0.5*base+0.5*X;
+	y2 = y0 - t2*Math.cos(beta)-t2*Math.tan(beta)*Math.sin(beta) + (H/(base-X))*(x2-(x0+base))
+
+	s1 = 2 * s2;
+	x1 = - Math.cos(alpha)*(s1) + x0+0.5*X;
+	y1 = y0 - (t1+2*r)*Math.cos(alpha)-(t1+2*r)*Math.tan(alpha)*Math.sin(alpha) - (H/X)*(x1-x0);
+
+	length1 = Math.sqrt(Math.pow(x1+L1*Math.cos(alpha)+0.5*t1*Math.sin(alpha) - (x0+X),2)+Math.pow( y1-L1*Math.sin(alpha)+0.5*t1*Math.cos(alpha)  - (y0-H - t2/(6*Math.cos(beta))),2));
+length1angle = Math.atan((y1-L1*Math.sin(alpha)+0.5*t1*Math.cos(alpha)  - (y0-H - t2/(6*Math.cos(beta))))/(-(x1+L1*Math.cos(alpha)+0.5*t1*Math.sin(alpha)) + (x0+X)))
+
+	//pulley calcs
+	angle1 = s1/R;
+	angle2 = s2/(t2/3);
+	angle3 = s1/r;
+
+
+	if (x2 < x0 + X + R*Math.cos(beta)) {
+		start_sim();
+	}
+	else if(x2 > x0 + base) {
+		start_sim();
+	}
+	else if(x1 < 0) {
+		start_sim();
+	}
+	else if(x1 > x0 + X - R*Math.cos(alpha) - L1) {
+		start_sim();
+	}
+
+
+
+
+
+
+
+
+
+	//start_sim();
+
+	// ctx.beginPath();
+	// drawLine(x_0,y_0,x_0+r*Math.sin(theta),y_0-r*Math.cos(theta));
+	// ctx.strokeStyle = 'rgba(135,206,250,1)'
+	// ctx.lineWidth=5;
+	// ctx.stroke();
+	// ctx.closePath();
+	// if (k==0) {
+	// 	ctx.beginPath();
+	// 	ctx.lineWidth=1;
+	// 	ctx.strokeStyle='grey'
+	// 	ctx.stroke();
+	// 	ctx.closePath();
+	// } else {
+	// 	ctx.beginPath();
+	// 	ctx.lineWidth=1;
+	// 	spring(x_0,y_0-L,x_0+r*Math.sin(theta),y_0-r*Math.cos(theta),k);
+	// 	ctx.strokeStyle='grey'
+	// 	ctx.stroke();
+	// 	ctx.closePath();
+	// }
+
+	// var graphscale = 2/scale; // J/m
+	// drawRectangle(60/scale,30/scale,KE*graphscale,30/scale);
+	// ctx.fillStyle="rgba(135,206,250,0.6)"
+	// ctx.fill();
+	// drawRectangle(60/scale,60/scale,GPE*graphscale,30/scale);
+	// ctx.fillStyle="rgba(245,201,63,0.6)"
+	// ctx.fill();
+	// drawRectangle(60/scale,90/scale,EE*graphscale,30/scale);
+	// ctx.fillStyle="rgba(169,169,169,0.6)"
+	// ctx.fill();
+	// drawRectangle(60/scale,120/scale,Total_Energy*graphscale,30/scale);
+	// ctx.fillStyle="rgba(154,205,50,0.6)"
+	// ctx.fill();
+	// ctx.font = "15px Arial"
+	// ctx.fillStyle="black";
+	// ctx.fillText("KE", 60-15*2,45);
+	// ctx.fillText("GPE", 60-39, 78);
+	// ctx.fillText("EE", 60-15*2,110);
+	// ctx.fillText("Total", 60-15*2.5,140);
+	//angle at top of triangle. x1 and h1 will get updated (rather than use x2 h2 etc)
+								// gamma = Math.asin(Math.sin(theta)*r/(x1+x0));
+								// //From moment equation
+								// alpha = (m*9.81*(0.5*r*Math.sin(theta))    -k*x1*Math.sin(gamma)*(r*Math.cos(theta))   -k*x1*Math.cos(gamma)*(r*Math.sin(theta)))/I_o;
+								// w1 = alpha * dt + w1;
+								// theta = w1 * dt + theta;
+								// x1 = Math.sqrt(L*L+r*r-2*L*r*Math.cos(theta)) - x0;
+								// KE = 0.5 * I_o * (w1 * w1);
+								// GPE = m * 9.81 * (0.5 * r * Math.cos(theta) + r /2);  //chosen to place axis bottom of vertical position to make sure that GPE > 0
+								// EE = 0.5 * k * x1 * x1;
+								// Total_Energy = KE + GPE + EE;
+	// //translation of center of mass
+	// v = a_G * dt + v;
+	// x_0 = - v * Math.cos(theta) * dt + x_0;
+	// y_0 = v * Math.sin(theta) * dt + y_0;
+	// // rotation of wheel relative to center of mass
+	// omega = alpha * dt + omega;
+	// gamma = omega * dt + gamma;
+	// //restart sim when wheel has rolled down hill
+	// if (timer > Math.sqrt(2*X/a_G)) {
+ 	//start_sim();
+	// }
+}
+function getCanvas() {
+	var c = document.getElementById("myCanvas");
+	return c.getContext("2d");
+} 
+function drawRectangle( x, y,  width, height) {
+	ctx.beginPath();
+	ctx.rect(x * scale, y * scale, width * scale, height * scale);
+	ctx.stroke();
+}
+function drawLine(x1,y1,x2,y2) {
+	ctx.beginPath();
+	ctx.moveTo(x1 * scale,y1 * scale);
+	ctx.lineTo(x2 * scale,y2 * scale);
+	ctx.stroke();
+}
+function drawIsoTriangle(x1,y1,b,h,theta) {
+	//starts midpoint along base
+	var gamma = Math.atan(2*h/b);
+	ctx.beginPath();
+	ctx.moveTo(x1 * scale,y1 * scale);
+	ctx.lineTo(x1 * scale - (b/2)*Math.sin(theta) * scale, y1 * scale - (b/2)*Math.cos(theta) * scale)
+	ctx.lineTo(x1 * scale - (b/2)*Math.sin(theta) * scale + Math.sqrt(h*h+b*b/4)*Math.cos(gamma+theta-Math.PI/2) * scale, y1 * scale - (b/2)*Math.cos(theta) * scale - Math.sqrt(h*h+b*b/4)*Math.sin(gamma+theta-Math.PI/2) * scale);
+	ctx.moveTo(x1 * scale,y1 * scale);
+	ctx.lineTo(x1 * scale + (b/2)*Math.sin(theta) * scale, y1 * scale + (b/2)*Math.cos(theta) * scale);
+	ctx.lineTo(x1 * scale + (b/2)*Math.sin(theta) * scale + Math.sqrt(h*h+b*b/4)*Math.sin(gamma-theta) * scale, y1 * scale + (b/2)*Math.cos(theta) * scale - Math.sqrt(h*h+b*b/4)*Math.cos(gamma-theta) * scale);
+	ctx.stroke();
+}
+function drawArrowLarge(x,y,x_tip,y_tip,colour) {
+	var theta = Math.atan((y_tip - y) / (x_tip - x));
+	if (x_tip - x < 0) {
+    theta = theta + Math.PI;
+} else { 
+    theta = theta;
+}
+	ctx.beginPath();
+	ctx.moveTo(x * scale, y * scale);
+	ctx.lineTo(x_tip * scale, y_tip * scale);
+	ctx.lineTo(scale*x_tip - scale*0.3 * Math.sin(0.25 * Math.PI - theta), scale*y_tip - scale*0.3 * Math.cos(0.25 * Math.PI - theta));
+	ctx.moveTo(x_tip * scale, y_tip * scale);
+	ctx.lineTo(scale*x_tip - scale*0.3 * Math.cos(0.25 * Math.PI - theta), scale*y_tip + scale*0.3 * Math.sin(0.25 * Math.PI - theta));
+	ctx.stroke();
+}
+function drawArrowSmall(x,y,x_tip,y_tip) {
+	var theta = Math.atan((y_tip - y) / (x_tip - x));
+		if (x_tip - x < 0) {
+	    theta = theta + Math.PI;
+	} else { 
+	    theta = theta;
+	}
+	ctx.beginPath();
+	ctx.moveTo(x * scale, y * scale);
+	ctx.lineTo(x_tip * scale, y_tip * scale);
+	ctx.lineTo(scale*x_tip - scale*0.15 * Math.sin(Math.PI/3 - theta), scale*y_tip - scale*0.15 * Math.cos(Math.PI/3 - theta));
+	ctx.moveTo(x_tip * scale, y_tip * scale);
+	ctx.lineTo(scale*x_tip - scale*0.15 * Math.cos(Math.PI/6 - theta), scale*y_tip + scale*0.15 * Math.sin(Math.PI/6 - theta));
+	ctx.stroke();
+
+}
+function drawBall(x1,y1,r,theta) {
+	// ctx.beginPath();
+	// ctx.arc(x1 * scale,y1 * scale,r * scale,0,2*Math.PI);
+	// ctx.stroke();
+
+
+		var gr = ctx.createLinearGradient(scale*x1 - scale*r*Math.cos(theta),scale*y1 + scale*r*Math.sin(theta),scale*x1 + scale*r*Math.cos(theta), scale*y1 - scale*r*Math.sin(theta));
+	gr.addColorStop(0,'rgb(220,220,220)');
+	gr.addColorStop(0.5, 'rgb(160,160,160');
+	gr.addColorStop(1,'rgb(200,200,200)');
+	ctx.fillStyle = gr;
+	ctx.beginPath();
+	ctx.arc(x1 * scale,y1 * scale,r * scale,0,2*Math.PI);
+	ctx.stroke();
+	ctx.closePath();
+	ctx.fill();
+}
+function spring(x_1,y_1,x_2,y_2,n) {
+	var h = 10;
+	var x1 = x_1 * scale;
+	var x2 = x_2 * scale;
+	var y1 = y_1 * scale;
+	var y2 = y_2 * scale;
+	var theta = Math.atan((y1-y2)/(x2-x1));
+	var d = Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1))/(2+4*n);
+	var gamma = Math.atan(h/(2*d));
+	if (x2-x1 < 0) {
+	    theta = theta + Math.PI;
+	} else { 
+	    theta = theta;
+	}
+	ctx.beginPath();
+	//first line of spring
+	ctx.moveTo(x1,y1);
+	ctx.lineTo(x1+d*Math.cos(theta), y1-d*Math.sin(theta))
+	ctx.lineTo(x1+d*Math.cos(theta)+Math.sqrt(d*d+h*h/4)*Math.cos(gamma-theta), y1-d*Math.sin(theta)+Math.sqrt(d*d+h*h/4)*Math.sin(gamma-theta));
+	//last line of spring
+	ctx.moveTo(x2,y2);
+	ctx.lineTo(x2-d*Math.cos(theta), y2+d*Math.sin(theta));
+	ctx.lineTo(x2-d*Math.cos(theta)-Math.sqrt(d*d+h*h/4)*Math.cos(gamma-theta), y2+d*Math.sin(theta)-Math.sqrt(d*d+h*h/4)*Math.sin(gamma-theta));
+	//spring
+	ctx.moveTo(x1+d*Math.cos(theta)+Math.sqrt(d*d+h*h/4)*Math.cos(gamma-theta), y1-d*Math.sin(theta)+Math.sqrt(d*d+h*h/4)*Math.sin(gamma-theta));
+	for (i = 1; i < 2*n; i++) {
+    ctx.lineTo(x1+d*Math.cos(theta)+Math.sqrt(d*d+h*h/4)*Math.cos(gamma-theta)+(0.25+0.5*i-0.25*(Math.pow(-1,i)))*2*Math.sqrt(d*d+h*h/4)*Math.cos(gamma+theta)+(-0.25+0.5*i+0.25*(Math.pow(-1,i)))*2*Math.sqrt(d*d+h*h/4)*Math.cos(gamma-theta), y1-d*Math.sin(theta)+Math.sqrt(d*d+h*h/4)*Math.sin(gamma-theta)-(0.25+0.5*i-0.25*(Math.pow(-1,i)))*2*Math.sqrt(d*d+h*h/4)*Math.sin(gamma+theta)+(-0.25+0.5*i+0.25*(Math.pow(-1,i)))*2*Math.sqrt(d*d+h*h/4)*Math.sin(gamma-theta));
+	}
+	ctx.lineWidth = 1;
+	ctx.stroke();
+}
+function drawRectangleSlant(x1, y1, L, t, theta, colour) {
+	ctx.beginPath();
+	var gr = ctx.createLinearGradient(scale * x1, scale * y1, scale * (x1 + L*Math.cos(theta)), scale * (y1 + L*Math.sin(theta)));
+	// gr.addColorStop(0,'rgb(204,204,204)');
+	// gr.addColorStop(0.5, 'rgb(191,191,191');
+	// gr.addColorStop(1,'rgb(200,200,200)');
+	gr.addColorStop(0,colour);
+	gr.addColorStop(1,colour);
+	ctx.fillStyle = gr;
+	ctx.moveTo(scale * x1, scale * y1);
+	ctx.lineTo(scale * (x1 + L * Math.cos(theta)), scale * (y1 + L * Math.sin(theta)));
+	ctx.lineTo(scale * (x1 + L * Math.cos(theta) - t * Math.sin(theta)), scale * (y1 + L * Math.sin(theta) + t * Math.cos(theta)));
+	ctx.lineTo(scale * (x1 - t * Math.sin(theta)), scale * (y1 + t * Math.cos(theta)));
+	ctx.lineTo(scale * x1, scale * y1);
+	ctx.stroke();
+	ctx.fill();
+	ctx.closePath();
+}
+  </script>
+</body>
+</html>
