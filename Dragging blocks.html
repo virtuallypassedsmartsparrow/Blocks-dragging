@@ -70,6 +70,7 @@ var P;
 
 var F_static_no_friction;
 var N;
+var F;
 
 var timer;
 var angle1;
@@ -128,6 +129,31 @@ ctx.clearRect(0,0,canvaswidth*scale,canvasheight*scale);
 	ctx.fillStyle = 'black';
 	ctx.fillText("Timer: " + Math.round(timer*10)/10 + " s", 10, 30);
 
+	//bar
+	// var KE = 0.5*M*v2*v2 + 2*m*v2*v2;
+	// var GPE = M*9.81*s2*Math.sin(beta) + m*9.81*(-2*s2*Math.sin(alpha));
+	// var Eloss = u_k*N*s2;
+	// 	var graphscale = 0.2/scale; // J/m
+	// drawRectangle(60/scale,30/scale,(Eloss)*graphscale,30/scale);
+	// ctx.fillStyle="rgba(135,206,250,0.6)"
+	// ctx.fill();
+	// drawRectangle(60/scale,60/scale,(GPE)*graphscale,30/scale);
+	// ctx.fillStyle="rgba(245,201,63,0.6)"
+	// ctx.fill();
+	// drawRectangle(60/scale,90/scale,(Eloss)*graphscale,30/scale);
+	// ctx.fillStyle="rgba(169,169,169,0.6)"
+	// ctx.fill();
+	// drawRectangle(60/scale,120/scale,(KE+GPE+Eloss)*graphscale,30/scale);
+	// ctx.fillStyle="rgba(154,205,50,0.6)"
+	// ctx.fill();
+
+	// ctx.font = "15px Arial"
+	// ctx.fillStyle="black";
+	// ctx.fillText("Eloss", 60-15*2,45);
+	// ctx.fillText("GPE", 60-39, 78);
+	// ctx.fillText("Eloss", 60-15*2,110);
+	// ctx.fillText("Total", 60-15*2.5,140);
+
 	//drawing hill
 	ctx.beginPath();
 	ctx.moveTo(x0*scale,y0*scale);
@@ -164,8 +190,12 @@ ctx.clearRect(0,0,canvaswidth*scale,canvasheight*scale);
 	drawLine(x1+L1*Math.cos(alpha)+0.5*t1*Math.sin(alpha), y1-L1*Math.sin(alpha)+0.5*t1*Math.cos(alpha), x1+L1*Math.cos(alpha)+0.5*t1*Math.sin(alpha) + length1*Math.cos(length1angle + Math.atan(R/length1)), y1-L1*Math.sin(alpha)+0.5*t1*Math.cos(alpha) - length1*Math.sin(length1angle + Math.atan(R/length1)));
 
 	//Force P
-	drawArrowSmall(x2+L2*Math.cos(beta)-0.5*t2*Math.sin(beta) + P * forcescale * Math.cos(theta),  y2+L2*Math.sin(beta)+0.5*t2*Math.cos(beta) - P * forcescale * Math.sin(theta),x2+L2*Math.cos(beta)-0.5*t2*Math.sin(beta), y2+L2*Math.sin(beta)+0.5*t2*Math.cos(beta));
+	drawArrowSmall(x2+1.1*L2*Math.cos(beta)-0.5*t2*Math.sin(beta) + P * forcescale * Math.cos(theta),  y2+1.1*L2*Math.sin(beta)+0.5*t2*Math.cos(beta) - P * forcescale * Math.sin(theta),x2+1.1*L2*Math.cos(beta)-0.5*t2*Math.sin(beta), y2+1.1*L2*Math.sin(beta)+0.5*t2*Math.cos(beta));
 
+	//Friction F
+	// x2 - 1.1*t2*Math.sin(beta) + 0.5*L2*Math.cos(beta)
+	// y2 + 1.1*t2*Math.cos(beta) + 0.5*L2*Math.sin(beta)
+	drawArrowSmall(x2 - 1.5*t2*Math.sin(beta) + 0.5*L2*Math.cos(beta) - 0.5*F*Math.cos(beta) * forcescale, y2 + 1.5*t2*Math.cos(beta) + 0.5*L2*Math.sin(beta) - 0.5*F*Math.sin(beta) * forcescale, x2 - 1.5*t2*Math.sin(beta) + 0.5*L2*Math.cos(beta) + 0.5*F*Math.cos(beta) * forcescale, y2 + 1.5*t2*Math.cos(beta) + 0.5*L2*Math.sin(beta) + 0.5*F*Math.sin(beta) * forcescale);
 
 
 	//calculations
@@ -174,12 +204,15 @@ ctx.clearRect(0,0,canvaswidth*scale,canvasheight*scale);
 
 	if (F_static_no_friction > u_s*N) {
 		a2 = (2*m*9.81*Math.sin(alpha) + P*Math.cos(theta+beta) - M*9.81*Math.sin(beta) - u_k*P*Math.sin(theta+beta)-u_k*M*9.81*Math.cos(beta))/(M+4*m);
+		F = u_k * N;
 	}	
 	else if (F_static_no_friction < - u_s*N)	{
 		a2 = (2*m*9.81*Math.sin(alpha) + P*Math.cos(theta+beta) - M*9.81*Math.sin(beta) + u_k*P*Math.sin(theta+beta)+u_k*M*9.81*Math.cos(beta))/(M+4*m);
+		F = - u_k * N;
 	}
 	else	{
 		a2 = 0;
+		F = 2*m*9.81*Math.sin(alpha) + P*Math.cos(theta+beta) - M*9.81*Math.sin(beta); //facing downhill
 	}
 
 	//a2 = (2*m*9.81*Math.sin(alpha) + P*Math.cos(theta+beta) - M*9.81*Math.sin(beta) - u_k*P*Math.sin(theta+beta)-u_k*M*9.81*Math.cos(beta))/(M+4*m);
